@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -40,8 +41,17 @@ def detect_default_branch(repo: Path) -> str:
     raise RuntimeError(f"could not determine default branch for {repo}")
 
 
-def scan_commits(repo: Path, window: AuditWindow) -> GitScanResult:
-    """Scan the default branch's commit log within the window."""
+def scan_commits(
+    repo: Path, window: AuditWindow, *, include_files: bool = False
+) -> GitScanResult:
+    """Scan the default branch's commit log within the window.
+
+    When ``include_files=True`` runs a second pass with ``--name-only
+    --diff-merges=first-parent`` to populate ``Commit.files_touched``.
+    Only file paths are read; file content is never opened. This is what
+    the ``--risk`` flag in the CLI uses for churn / post-merge-burst
+    signal computation.
+    """
     default_branch = detect_default_branch(repo)
     out = _run_git(
         repo,
@@ -73,9 +83,42 @@ def scan_commits(repo: Path, window: AuditWindow) -> GitScanResult:
                 subject=subject,
             )
         )
+
+    if include_files and commits:
+        files_by_sha = _scan_files_per_commit(repo, window, default_branch)
+        commits = [
+            replace(c, files_touched=files_by_sha.get(c.sha)) for c in commits
+        ]
+
     return GitScanResult(
         repo_path=repo.resolve(),
         default_branch=default_branch,
         window=window,
         commits=commits,
     )
+
+
+def _scan_files_per_commit(
+    repo: Path, window: AuditWindow, default_branch: str
+) -> dict[str, tuple[str, ...]]:
+    """Second pass: ``git log --name-only`` -> {sha: (files...)}."""
+    out = _run_git(
+        repo,
+        "log",
+        "--pretty=format:%H",
+        "--name-only",
+        "--diff-merges=first-parent",
+        f"--since={window.start.isoformat()}",
+        f"--until={window.end.isoformat()}",
+        default_branch,
+    )
+    files_by_sha: dict[str, tuple[str, ...]] = {}
+    # Each commit block is: sha\n file1\n file2\n ... separated by blank line.
+    for block in out.split("\n\n"):
+        lines = [line for line in block.split("\n") if line.strip()]
+        if not lines:
+            continue
+        sha = lines[0].strip()
+        files = tuple(line.strip() for line in lines[1:] if line.strip())
+        files_by_sha[sha] = files
+    return files_by_sha

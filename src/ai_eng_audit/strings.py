@@ -96,6 +96,24 @@ EN: Mapping[str, str] = {
     "r_chk_pr_template": "PR template",
     "r_chk_gitignore": ".gitignore",
     "r_chk_env_example": ".env example",
+    # Maintainability risk signals (--risk)
+    "risk_section_header": "maintainability risk signals:",
+    "risk_subheader_churn": "file churn hotspot (top files touched in window):",
+    "risk_subheader_burst": (
+        "post-merge fix burst (commits touching same files within {days}d of merge):"
+    ),
+    "risk_subheader_revert": "revert rate by month:",
+    "risk_none_churn": "  (no file accumulates {min} or more touches in window)",
+    "risk_none_burst": "  (no merged PR sees follow-up commits touching its files)",
+    "risk_none_revert": "  (no merged PRs in window)",
+    "risk_burst_line": "  PR #{number}: {title}  → {count} followup commit(s)",
+    "risk_revert_line": "  {month}  {rate:.1f}%  ({reverted}/{merged} merged)",
+    "risk_footer": (
+        "these are patterns, not verdicts. high file churn and post-merge bursts "
+        "often correlate with debt accumulation but can also reflect legitimate "
+        "iteration. revert rate trend is a lower bound — only explicit reverts "
+        "are detected. the reader judges."
+    ),
 }
 
 
@@ -178,6 +196,22 @@ ZH: Mapping[str, str] = {
     "r_chk_pr_template": "PR template",
     "r_chk_gitignore": ".gitignore",
     "r_chk_env_example": ".env example",
+    # Maintainability risk signals (--risk)
+    "risk_section_header": "maintainability risk signals:",
+    "risk_subheader_churn": "file churn hotspot(窗口内被改最多的文件):",
+    "risk_subheader_burst": (
+        "post-merge fix burst(merge 后 {days}d 内同文件被再次 commit):"
+    ),
+    "risk_subheader_revert": "revert 率按月:",
+    "risk_none_churn": "  (没有文件在窗口内被改 {min} 次或以上)",
+    "risk_none_burst": "  (无 merged PR 在 merge 后立刻被同文件 commit 触碰)",
+    "risk_none_revert": "  (窗口内无 merged PR)",
+    "risk_burst_line": "  PR #{number}: {title}  → {count} 次后续 commit",
+    "risk_revert_line": "  {month}  {rate:.1f}%  ({reverted}/{merged} merged)",
+    "risk_footer": (
+        "这些是 pattern,不是判决。高 file churn 与 post-merge burst 经常与债务积累相关,"
+        "但也可能是正常迭代。Revert 率是下界——只检测显式 revert。读者自己判断。"
+    ),
 }
 
 

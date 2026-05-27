@@ -21,7 +21,7 @@ export GITHUB_TOKEN=ghp_xxxxx
 pip install ai-eng-audit
 
 # audit: AI 支出 vs 工程产出
-ai-eng-audit scan --repo /path/to/your/repo --window 90d --lang zh --annotate \
+ai-eng-audit scan --repo /path/to/your/repo --window 90d --lang zh --annotate --risk \
     --billing ~/Downloads/anthropic_cost.csv \
     --billing ~/Downloads/openrouter_activity.csv
 
@@ -37,7 +37,9 @@ Python 3.11+。`GITHUB_TOKEN` 在 https://github.com/settings/tokens 生成 PAT�
 
 `--annotate` 在报告末尾插一段 `notable contrasts:`,放几条从报告自身数据派生的对比(in-window flow / contributor concentration / merge throughput / spend pairing)。不引入外部 benchmark,不打健康/不健康标签。
 
-加 `--format json` 出 JSON。指标定义、支持的 vendor、scope alignment 规则、annotation 算法在 [docs/methodology.md](docs/methodology.md)。
+`--risk` 在报告末尾插一段 `maintainability risk signals:`,放三组 pattern:**file churn hotspot**(窗口内被改最多的文件)、**post-merge fix burst**(merge 后 7 天内同文件被再次 commit 的次数)、**revert rate by month**。读 commit 的 changed file path,不读 file content;不出 score,不打健康标签。
+
+加 `--format json` 出 JSON。指标定义、支持的 vendor、scope alignment、annotation / risk 算法、readiness 规则全在 [docs/methodology.md](docs/methodology.md)。
 
 ## scan 报告长这样
 

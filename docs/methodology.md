@@ -51,6 +51,32 @@ _本文档里 "headline" 指 scan 报告顶部默认汇总数字。_
 - **不检测嵌入在 `pyproject.toml` 或 `package.json` 里的 lint config**——需要 file content read,推到后续版本(若加,会用 opt-in flag)
 - **不告诉你这是 ready / not ready**——读者拿到 checklist,自己判断
 
+## Maintainability risk signals(`--risk`)
+
+`readiness` 看的是**静态前置**(repo 有没有 agent 协作的基础),`--risk` 看**动态后置**(代码进来之后,留下了什么形态)。一对组合拳。
+
+`scan --risk` 在报告末尾插一段 `maintainability risk signals:`,放三组 pattern signal,**全部从已有 commit + PR 元数据派生,不读 file content**(只读 commit 的 changed file paths)。
+
+| 信号 | 算法 | 默认阈值 |
+|---|---|---|
+| **file churn hotspot** | 窗口内每个 file 出现在多少个 commit 的 `--name-only` 输出里;取 top-N | top-10,最少 3 次 |
+| **post-merge fix burst** | 对每个 merged PR:读 `merge_commit_sha` 的 changed file paths(假设 squash merge,merge commit 持有 PR 全部变更),数 merge 之后 N 天内 default branch 上的 commit 中**触碰同一个 file** 的次数 | N=7 天 |
+| **revert rate trend** | 按 PR `merged_at` 的月份分桶,每月内统计 merged PR 数与 `reverted_within_n` PR 数,算比例 | 月级 |
+
+**隐私边界扩展**:`--risk` 触发后,`scan` 多跑一次 `git log --pretty=format:%H --name-only --diff-merges=first-parent`,把每个 commit 的 changed file paths 读进 `Commit.files_touched`。**只读 path 字符串,不打开 file**。这一点与 `readiness` 的"file 是否存在"在同一性质上——两者都只看 path,不看 content。
+
+**已知边界**:
+
+- `post-merge fix burst` 依赖 merge commit 持有 PR 全部 changed files——这对 **squash merge** 成立,对 `--no-ff` 或 rebase merge 可能丢失文件信息;遇到这种 PR 会被跳过
+- `revert rate trend` 仍受限于 v1.0 explicit-revert-only 的检测——squash 吃掉的 revert、非标准 subject 的 revert 不计入,该数字是**下界**
+- `file churn` 不区分"修复同一个 bug"和"AI 反复改"——pattern 一样,语义需要读者用上下文判断
+
+**故意不做的事**:
+
+- 不输出聚合"risk score"——任何 0-100 分都暗含权重判断,工具拒绝持有
+- 不打"健康/不健康"标签——churn 高的文件可能是核心模块的正常迭代,也可能是债务沉淀;工具不替读者判断
+- 不读 file content——这是 `--risk` 的隐私承诺
+
 ## "Shipped"
 
 "Shipped" 指合并到主分支(L1)。它是个好用的代理,但不等同 release,也不等同客户可见。报告里每个 "shipped" 数字后面都带 `(L1 proxy)`。L2(进 release tag / changelog / 部署记录)和 L3(到生产 + 客户可见)需要逐公司接入 CI/CD 或 feature flag 系统,没有通用 API,不在 v1.0 范围。

@@ -146,11 +146,15 @@ class Report:
     'CSV format unrecognized'}). Distinguishes "scan skipped" (key absent,
     field None) from "scan failed" (key present with reason). Text renderer
     surfaces these in the headline; JSON consumers see the dict directly.
+
+    risk is populated only when --risk is requested. Held as Any to avoid
+    a circular import (risk module imports from this models module).
     """
 
     git: GitScanResult
     pr: PRScanResult | None = None
     classifications: list[PRClassification] = field(default_factory=list)
     billing: BillingScanResult | None = None
+    risk: object | None = None
     errors: dict[str, str] = field(default_factory=dict)
     methodology_version: str = METHODOLOGY_VERSION

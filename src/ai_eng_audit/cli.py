@@ -18,6 +18,7 @@ from ai_eng_audit.annotations import compute_annotations
 from ai_eng_audit.classify.friction import classify_prs
 from ai_eng_audit.models import AuditWindow, BillingScanResult, Report
 from ai_eng_audit.readiness import ReadinessResult, compute_readiness
+from ai_eng_audit.risk import RiskSignals, compute_risk
 from ai_eng_audit.strings import get as get_strings
 from ai_eng_audit.tier1.billing_scan import BillingScanError, scan_billing
 from ai_eng_audit.tier1.git_scan import scan_commits
@@ -62,7 +63,7 @@ def cmd_scan(args: argparse.Namespace) -> int:
     revert_window_days: int = args.revert_window
     long_lived_threshold_days: int = args.long_lived
 
-    git_result = scan_commits(repo, window)
+    git_result = scan_commits(repo, window, include_files=args.risk)
 
     errors: dict[str, str] = {}
 
@@ -90,11 +91,20 @@ def cmd_scan(args: argparse.Namespace) -> int:
         except BillingScanError as e:
             errors["billing"] = str(e)
 
+    risk_signals: RiskSignals | None = None
+    if args.risk:
+        risk_signals = compute_risk(
+            git_result.commits,
+            pr_result.prs if pr_result is not None else [],
+            classifications,
+        )
+
     report = Report(
         git=git_result,
         pr=pr_result,
         classifications=classifications,
         billing=billing_result,
+        risk=risk_signals,
         errors=errors,
     )
 
@@ -191,6 +201,63 @@ def _render_spend_section(
     )
     if billing.skipped_rows:
         _kv(out, "skipped rows:", f"{billing.skipped_rows} (CSV format drift?)")
+
+
+def _render_risk_section(out: TextIO, risk: RiskSignals, s) -> None:
+    print(file=out)
+    print(s["risk_section_header"], file=out)
+
+    # file churn
+    print(file=out)
+    print(s["risk_subheader_churn"], file=out)
+    if risk.file_churn:
+        max_path_len = max(len(fc.path) for fc in risk.file_churn)
+        for fc in risk.file_churn:
+            print(
+                f"  {fc.path:<{max_path_len}}  {fc.touch_count} commits",
+                file=out,
+            )
+    else:
+        print(s["risk_none_churn"].format(min=3), file=out)
+
+    # post-merge fix burst
+    print(file=out)
+    if risk.post_merge_bursts:
+        days = risk.post_merge_bursts[0].burst_window_days
+        print(s["risk_subheader_burst"].format(days=days), file=out)
+        for b in risk.post_merge_bursts[:10]:
+            title = (b.pr_title or "").strip()
+            if len(title) > 50:
+                title = title[:47] + "..."
+            print(
+                s["risk_burst_line"].format(
+                    number=b.pr_number, title=title, count=b.burst_commits
+                ),
+                file=out,
+            )
+    else:
+        print(s["risk_subheader_burst"].format(days=7), file=out)
+        print(s["risk_none_burst"], file=out)
+
+    # revert rate trend
+    print(file=out)
+    print(s["risk_subheader_revert"], file=out)
+    if risk.revert_rate_trend:
+        for r in risk.revert_rate_trend:
+            print(
+                s["risk_revert_line"].format(
+                    month=r.year_month,
+                    rate=r.rate_pct,
+                    reverted=r.reverted,
+                    merged=r.merged,
+                ),
+                file=out,
+            )
+    else:
+        print(s["risk_none_revert"], file=out)
+
+    print(file=out)
+    print(textwrap.fill(s["risk_footer"], width=80), file=out)
 
 
 def _render_text(
@@ -386,6 +453,10 @@ def _render_text(
             for a in annotations:
                 print("  • " + s[a.key].format(**a.values), file=out)
 
+    # --- Maintainability risk signals (opt-in via --risk) ---
+    if report.risk is not None:
+        _render_risk_section(out, report.risk, s)
+
     # --- Footer ---
     print(file=out)
     print("—", file=out)
@@ -514,6 +585,16 @@ def main() -> int:
             "(WIP delta, contributor concentration, merge throughput, spend "
             "pairing) computed from fields already in the report. No external "
             "benchmarks, no good/bad labels. See docs/methodology.md."
+        ),
+    )
+    scan.add_argument(
+        "--risk",
+        action="store_true",
+        help=(
+            "append a 'maintainability risk signals' section: file churn "
+            "hotspot, post-merge fix burst, revert rate trend. Reads commit "
+            "file paths (a second `git log --name-only` pass), not file "
+            "content. Patterns, not verdicts. See docs/methodology.md."
         ),
     )
     scan.set_defaults(func=cmd_scan)

@@ -51,6 +51,32 @@ v1.1 checks, grouped into four categories:
 - **Doesn't detect lint config embedded in `pyproject.toml` / `package.json`** — that requires reading file content, deferred (would need an opt-in flag)
 - **Doesn't emit ready / not-ready verdict** — readers get the checklist and judge for themselves
 
+## Maintainability risk signals (`--risk`)
+
+`readiness` looks at **static prerequisites** (does the repo have the infrastructure for agent collaboration); `--risk` looks at **dynamic outcomes** (once the code lands, what shape does it leave behind). One-two punch.
+
+`scan --risk` appends a `maintainability risk signals:` section with three pattern signals, **all derived from commit + PR metadata already collected — no file content is read** (only the changed file paths from commits).
+
+| Signal | Algorithm | Default thresholds |
+|---|---|---|
+| **file churn hotspot** | For each file, count commits in the window where it appears in `--name-only` output; take top-N | top-10, minimum 3 touches |
+| **post-merge fix burst** | For each merged PR: read the `merge_commit_sha`'s changed file paths (assumes squash merge — the merge commit holds the PR's full diff); count commits on default branch within N days after the merge that touch any of those files | N=7 days |
+| **revert rate trend** | Bucket merged PRs by their `merged_at` month; per bucket, count merged PRs and `reverted_within_n` PRs; report the ratio | monthly |
+
+**Privacy boundary extension**: when `--risk` is set, `scan` runs an additional `git log --pretty=format:%H --name-only --diff-merges=first-parent` to populate `Commit.files_touched` with changed file paths. **Path strings only — files are not opened.** Same property as `readiness`'s "file exists?" check: both look at paths, not content.
+
+**Known limits**:
+
+- `post-merge fix burst` assumes the merge commit holds the PR's full file list — true for **squash merges**, but `--no-ff` or rebase merges can lose file info; those PRs are skipped
+- `revert rate trend` inherits the v1.0 explicit-revert-only detection — squash-eaten reverts and non-standard-subject reverts aren't counted, so the number is a **lower bound**
+- `file churn` cannot distinguish "iterating on a bug fix" from "AI keeps rewriting" — the pattern is the same; the reader needs context to interpret
+
+**Deliberately not done**:
+
+- No aggregate "risk score" — any 0-100 score implies a weighting judgment the tool refuses to hold
+- No "healthy / unhealthy" labels — a high-churn file may be a core module under legitimate iteration, or genuine debt accumulation; the tool does not decide
+- No file content reads — that's the `--risk` privacy contract
+
 ## "Shipped"
 
 "Shipped" means merged to the default branch (L1). It's a useful proxy but not equivalent to release, nor to customer-visible value. Every "shipped" figure in a report carries the `(L1 proxy)` suffix. L2 (release tag / changelog / deployment record) and L3 (customer-visible) require per-company CI/CD or feature-flag integration; not in v1.0.

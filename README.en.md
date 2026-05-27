@@ -21,7 +21,7 @@ export GITHUB_TOKEN=ghp_xxxxx
 pip install ai-eng-audit
 
 # audit: AI spend vs throughput
-ai-eng-audit scan --repo /path/to/your/repo --window 90d --annotate \
+ai-eng-audit scan --repo /path/to/your/repo --window 90d --annotate --risk \
     --billing ~/Downloads/anthropic_cost.csv \
     --billing ~/Downloads/openrouter_activity.csv
 
@@ -37,7 +37,9 @@ Add `--lang zh` for Chinese narrative; section labels, metric names, and technic
 
 `--annotate` appends a `notable contrasts:` block with a few derived observations (in-window flow, contributor concentration, merge throughput, spend pairing) computed strictly from numbers already in the report. No external benchmarks, no healthy/unhealthy labels.
 
-Add `--format json` for JSON output. Metric definitions, supported vendors, scope-alignment rules, and annotation algorithms are in [docs/methodology.en.md](docs/methodology.en.md).
+`--risk` appends a `maintainability risk signals:` block with three patterns: **file churn hotspot** (files touched the most in the window), **post-merge fix burst** (commits within 7 days of merge touching the PR's files), and **revert rate by month**. Reads commit file paths only, never file content; no score, no healthy/unhealthy verdict.
+
+Add `--format json` for JSON output. Metric definitions, supported vendors, scope-alignment rules, annotation / risk algorithms, and readiness rules are all in [docs/methodology.en.md](docs/methodology.en.md).
 
 ## What the scan report looks like
 
