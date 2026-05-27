@@ -1,0 +1,42 @@
+[project]
+name = "ai-eng-audit"
+version = "1.0.2"
+description = "Local CLI plotting AI spend against engineering throughput"
+readme = "README.en.md"
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+authors = [
+    {name = "0error-ob", email = "22552513+0error-ob@users.noreply.github.com"},
+]
+keywords = ["engineering-effectiveness", "ai-spend", "github", "metrics", "audit", "dora"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/0error-ob/ai-eng-audit"
+Repository = "https://github.com/0error-ob/ai-eng-audit"
+Issues = "https://github.com/0error-ob/ai-eng-audit/issues"
+Documentation = "https://github.com/0error-ob/ai-eng-audit/blob/main/docs/methodology.en.md"
+
+[project.scripts]
+ai-eng-audit = "ai_eng_audit.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
