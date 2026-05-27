@@ -1,25 +1,32 @@
 # AI Eng Audit
 
-Plot AI tool spend against engineering throughput on a shared chart. Local, open-source, one command.
+Shows whether your AI spend is turning into shipped work, and whether your engineering system can safely absorb more AI-generated code. Local, open-source, two commands.
 
 ## What it is
 
 Over the last year a lot of teams burned real money on Claude, Cursor, Copilot, and the rest. The invoices are clear; the output is not.
 
-The tool reads your local git history, PR data, and (optionally) the billing CSV you export from your AI vendor, putting spend and shipped output on the same timeline. You see:
+**`ai-eng-audit scan`** reads your local git history, PR data, and (optionally) the billing CSV you export from your AI vendor, putting spend and shipped output on the same timeline. You see:
 
 - total AI spend over the window, broken out by month
 - PRs merged to the default branch and the L1 ship rate
 - PRs opened and then closed, merged and then reverted, or open for too long
+
+**`ai-eng-audit readiness`** doesn't touch billing — it just checks whether your repo has the shared context an agent needs to participate (CI, tests, CODEOWNERS, PR template, etc.). PC analogy: a single PC's ROI was invisible until LANs spread; agents are the same — one engineer getting faster doesn't equal team output going up. The real "AI LAN" is a repo with enough shared infrastructure for agents to work reliably. This command tells you whether yours qualifies.
 
 ## How to use it
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxxx
 pip install ai-eng-audit
+
+# audit: AI spend vs throughput
 ai-eng-audit scan --repo /path/to/your/repo --window 90d --annotate \
     --billing ~/Downloads/anthropic_cost.csv \
     --billing ~/Downloads/openrouter_activity.csv
+
+# readiness: agent-collaboration infrastructure checklist
+ai-eng-audit readiness --repo /path/to/your/repo
 ```
 
 Python 3.11+. Generate a `GITHUB_TOKEN` PAT at https://github.com/settings/tokens with `repo` scope.
@@ -32,7 +39,7 @@ Add `--lang zh` for Chinese narrative; section labels, metric names, and technic
 
 Add `--format json` for JSON output. Metric definitions, supported vendors, scope-alignment rules, and annotation algorithms are in [docs/methodology.en.md](docs/methodology.en.md).
 
-## What the report looks like
+## What the scan report looks like
 
 A run looks roughly like this (numbers are synthetic):
 
@@ -90,4 +97,35 @@ notable contrasts:
 —
 methodology v1.0. definitions in docs/methodology.md.
 workflow signals only; not personnel evaluation. Tier 2 per-PR AI attribution arrives in later versions.
+```
+
+## What the readiness checklist looks like
+
+Run on `addyosmani/agent-skills` (real public OSS):
+
+```
+ai-eng-audit / agent-skills / readiness checklist
+
+CI / testing:
+  ✓ CI workflow  (.github/workflows/)
+  ✗ tests directory
+  ✗ lint / formatter config
+
+documentation:
+  ✓ README  (README.md)
+  ✓ CONTRIBUTING guide  (CONTRIBUTING.md)
+  ✓ LICENSE  (LICENSE)
+
+collaboration flow:
+  ✗ CODEOWNERS
+  ✗ PR template
+
+config / security:
+  ✓ .gitignore  (.gitignore)
+  ✗ .env example
+
+—
+this is a presence checklist, not a score. agents work more reliably in repos
+with shared context (CI, tests, ownership, docs); missing items don't block AI
+usage but do make AI output harder to review, test, and recover from.
 ```

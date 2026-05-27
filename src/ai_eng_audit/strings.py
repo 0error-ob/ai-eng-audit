@@ -74,6 +74,28 @@ EN: Mapping[str, str] = {
         "AI spend ${total:,.2f} vs {merged} merged PRs "
         "(per-PR cost not computed: scope_alignment = {scope})"
     ),
+    # Readiness checklist
+    "r_title": "ai-eng-audit / {repo} / readiness checklist",
+    "r_footer": (
+        "this is a presence checklist, not a score. agents work more reliably "
+        "in repos with shared context (CI, tests, ownership, docs); missing "
+        "items don't block AI usage but do make AI output harder to review, "
+        "test, and recover from."
+    ),
+    "r_cat_ci_testing": "CI / testing:",
+    "r_cat_documentation": "documentation:",
+    "r_cat_collaboration": "collaboration flow:",
+    "r_cat_config_security": "config / security:",
+    "r_chk_ci_workflow": "CI workflow",
+    "r_chk_tests_dir": "tests directory",
+    "r_chk_lint_config": "lint / formatter config",
+    "r_chk_readme": "README",
+    "r_chk_contributing": "CONTRIBUTING guide",
+    "r_chk_license": "LICENSE",
+    "r_chk_codeowners": "CODEOWNERS",
+    "r_chk_pr_template": "PR template",
+    "r_chk_gitignore": ".gitignore",
+    "r_chk_env_example": ".env example",
 }
 
 
@@ -135,6 +157,27 @@ ZH: Mapping[str, str] = {
         "AI 支出 ${total:,.2f} vs {merged} 个 merged PR"
         "(per-PR cost 不计算:scope_alignment = {scope})"
     ),
+    # Readiness checklist
+    "r_title": "ai-eng-audit / {repo} / readiness checklist",
+    "r_footer": (
+        "这是 presence checklist,不是评分。Agent 在共享上下文充足(CI、tests、"
+        "ownership、docs)的 repo 里工作更可靠;缺项不阻塞 AI 使用,但会让 AI 产出"
+        "更难 review、test、回滚。"
+    ),
+    "r_cat_ci_testing": "CI / 测试:",
+    "r_cat_documentation": "文档:",
+    "r_cat_collaboration": "协作流程:",
+    "r_cat_config_security": "配置 / 安全:",
+    "r_chk_ci_workflow": "CI workflow",
+    "r_chk_tests_dir": "tests 目录",
+    "r_chk_lint_config": "lint / formatter 配置",
+    "r_chk_readme": "README",
+    "r_chk_contributing": "CONTRIBUTING 指南",
+    "r_chk_license": "LICENSE",
+    "r_chk_codeowners": "CODEOWNERS",
+    "r_chk_pr_template": "PR template",
+    "r_chk_gitignore": ".gitignore",
+    "r_chk_env_example": ".env example",
 }
 
 

@@ -1,25 +1,32 @@
 # AI Eng Audit
 
-这个项目让你直观感受 AI 支出和工程上线。本地、开源、一行指令。
+这个项目让你直观感受 AI 支出和工程上线，以及你的工程系统能不能安全接住更多 AI 生成的代码。本地、开源、两个命令。
 
 ## 它是什么
 
 过去一年很多团队在 Claude / Cursor / Copilot 这些工具上烧了不少钱，账单清清楚楚，但产出说不清楚。
 
-这个工具通过读取你本地的 git 历史、PR 数据，以及（可选）你从 AI 厂商导出的账单 CSV，把"烧了多少钱"和"上线了多少代码"对到同一根时间轴上。能看到:
+**`ai-eng-audit scan`** 读你本地的 git 历史、PR 数据，以及（可选）AI 厂商账单 CSV，把"烧了多少钱"和"上线了多少代码"对到同一根时间轴上。能看到：
 
 - 这几个月 AI 花费的总额和按月分布
 - 同期合并到主分支的 PR 数量、ship rate (L1)
 - 哪些 PR 开了又关、合了又被回滚、开太久没合
+
+**`ai-eng-audit readiness`** 不算账单，只看你 repo 里有没有 agent 协作需要的基础设施(CI、tests、CODEOWNERS、PR template 等)。类比 PC 时代:单机 PC 的 ROI 不明显,LAN 铺开后组织效率才显现。Agent 也一样,单个工程师提速 ≠ 团队产出提升,真正的"AI LAN"是 repo 里有足够共享上下文让 agent 可靠工作。这条命令告诉你你的 repo 在不在位。
 
 ## 怎么用
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxxx
 pip install ai-eng-audit
+
+# audit: AI 支出 vs 工程产出
 ai-eng-audit scan --repo /path/to/your/repo --window 90d --lang zh --annotate \
     --billing ~/Downloads/anthropic_cost.csv \
     --billing ~/Downloads/openrouter_activity.csv
+
+# readiness: agent 协作基础设施 checklist
+ai-eng-audit readiness --repo /path/to/your/repo --lang zh
 ```
 
 Python 3.11+。`GITHUB_TOKEN` 在 https://github.com/settings/tokens 生成 PAT，scope 勾 `repo`。
@@ -32,7 +39,7 @@ Python 3.11+。`GITHUB_TOKEN` 在 https://github.com/settings/tokens 生成 PAT�
 
 加 `--format json` 出 JSON。指标定义、支持的 vendor、scope alignment 规则、annotation 算法在 [docs/methodology.md](docs/methodology.md)。
 
-## 报告长这样
+## scan 报告长这样
 
 跑一下大致是这样(数字合成):
 
@@ -89,4 +96,34 @@ commits by ISO week:
 —
 methodology v1.0。定义见 docs/methodology.md。
 工作流信号,非个人评估。Tier 2 per-PR AI 归因后续版本接入。
+```
+
+## readiness checklist 长这样
+
+跑 `addyosmani/agent-skills`(公开 OSS)真实结果:
+
+```
+ai-eng-audit / agent-skills / readiness checklist
+
+CI / 测试:
+  ✓ CI workflow  (.github/workflows/)
+  ✗ tests 目录
+  ✗ lint / formatter 配置
+
+文档:
+  ✓ README  (README.md)
+  ✓ CONTRIBUTING 指南  (CONTRIBUTING.md)
+  ✓ LICENSE  (LICENSE)
+
+协作流程:
+  ✗ CODEOWNERS
+  ✗ PR template
+
+配置 / 安全:
+  ✓ .gitignore  (.gitignore)
+  ✗ .env example
+
+—
+这是 presence checklist,不是评分。Agent 在共享上下文充足(CI、tests、ownership、docs)的 repo
+里工作更可靠;缺项不阻塞 AI 使用,但会让 AI 产出更难 review、test、回滚。
 ```

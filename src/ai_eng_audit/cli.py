@@ -17,6 +17,7 @@ from typing import Mapping, TextIO
 from ai_eng_audit.annotations import compute_annotations
 from ai_eng_audit.classify.friction import classify_prs
 from ai_eng_audit.models import AuditWindow, BillingScanResult, Report
+from ai_eng_audit.readiness import ReadinessResult, compute_readiness
 from ai_eng_audit.strings import get as get_strings
 from ai_eng_audit.tier1.billing_scan import BillingScanError, scan_billing
 from ai_eng_audit.tier1.git_scan import scan_commits
@@ -113,19 +114,21 @@ def cmd_scan(args: argparse.Namespace) -> int:
     return 0
 
 
-def _render_json(report: Report, out: TextIO) -> None:
-    def default(obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        if isinstance(obj, date):
-            return obj.isoformat()
-        if isinstance(obj, Decimal):
-            return str(obj)
-        if isinstance(obj, Path):
-            return str(obj)
-        raise TypeError(f"not serializable: {type(obj)}")
+def _render_json(obj, out: TextIO) -> None:
+    """Dump any dataclass (Report or ReadinessResult) to JSON."""
 
-    json.dump(asdict(report), out, default=default, indent=2)
+    def default(o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        if isinstance(o, date):
+            return o.isoformat()
+        if isinstance(o, Decimal):
+            return str(o)
+        if isinstance(o, Path):
+            return str(o)
+        raise TypeError(f"not serializable: {type(o)}")
+
+    json.dump(asdict(obj), out, default=default, indent=2)
     out.write("\n")
 
 
@@ -390,6 +393,48 @@ def _render_text(
     print(s["f_disclaimer"], file=out)
 
 
+def cmd_readiness(args: argparse.Namespace) -> int:
+    repo = Path(args.repo).resolve()
+    if not repo.exists():
+        print(f"error: {repo} does not exist", file=sys.stderr)
+        return 1
+
+    result = compute_readiness(repo)
+
+    if args.format == "json":
+        _render_json(result, sys.stdout)
+    else:
+        _render_readiness_text(result, sys.stdout, lang=args.lang)
+    return 0
+
+
+def _render_readiness_text(
+    result: ReadinessResult, out: TextIO, *, lang: str
+) -> None:
+    s = get_strings(lang)
+    repo_name = result.repo_path.name
+    print(s["r_title"].format(repo=repo_name), file=out)
+    print(file=out)
+
+    # Group checks by category, preserving order of first appearance
+    grouped: dict[str, list] = {}
+    for check in result.checks:
+        grouped.setdefault(check.category, []).append(check)
+
+    for category, items in grouped.items():
+        header_key = f"r_cat_{category}"
+        print(s.get(header_key, category + ":"), file=out)
+        for check in items:
+            mark = "✓" if check.present else "✗"
+            label = s.get(f"r_chk_{check.key}", check.key)
+            suffix = f"  ({check.found_at})" if check.found_at else ""
+            print(f"  {mark} {label}{suffix}", file=out)
+        print(file=out)
+
+    print("—", file=out)
+    print(textwrap.fill(s["r_footer"], width=80), file=out)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="ai-eng-audit")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -472,6 +517,28 @@ def main() -> int:
         ),
     )
     scan.set_defaults(func=cmd_scan)
+
+    readiness = sub.add_parser(
+        "readiness",
+        help=(
+            "check whether a repo has the shared context an AI agent needs "
+            "(CI / tests / docs / CODEOWNERS / PR template / etc.). "
+            "Presence checklist, not a score; reads file existence only."
+        ),
+    )
+    readiness.add_argument(
+        "--repo", default=".", help="path to repo (default: cwd)"
+    )
+    readiness.add_argument(
+        "--format", choices=("text", "json"), default="text", help="output format"
+    )
+    readiness.add_argument(
+        "--lang",
+        choices=("en", "zh"),
+        default="en",
+        help="language for category labels and footer (default: en)",
+    )
+    readiness.set_defaults(func=cmd_readiness)
 
     args = parser.parse_args()
     return args.func(args)

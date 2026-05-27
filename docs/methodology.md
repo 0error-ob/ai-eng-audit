@@ -1,10 +1,55 @@
 # 方法论
 
-把 AI 支出和工程吞吐放到同一张图上。不算 ROI,只做可见性。
+工具回答两个独立问题,两个命令:
 
-工具本地运行,读 git 历史、PR API 元数据、用户提供的厂商 billing CSV。不读代码内容、PR / issue 正文、评论正文、prompts;会读取 changed file paths、diff stats、review / comment 事件元数据(时间戳、author handle、bot 标记)。
+- **`scan`** —— AI 支出有没有变成上线的代码?读 git 历史 + PR API + AI 账单 CSV,输出 spend × throughput × friction 报告。
+- **`readiness`** —— 你的 repo 有没有 agent 安全工作所需的共享上下文?读已知路径的文件**是否存在**(不读文件内容),输出 checklist。
 
-_本文档里 "headline" 指报告顶部默认汇总数字。_
+不算 ROI,不打分,不评判代码质量。只把事实摆出来,读者自己判断。
+
+### 隐私边界
+
+| 命令 | 读 | 不读 |
+|---|---|---|
+| `scan` | git commit 元数据、PR API 元数据、用户提供的 billing CSV 汇总数字、changed file paths、diff stats、review/comment 事件元数据(时间戳、author handle、bot 标记) | 代码内容、PR / issue 正文、评论正文、prompts、模型响应 |
+| `readiness` | 已知路径下的**文件是否存在**(`.github/workflows/`、`CODEOWNERS`、`README.md` 等) | **任何文件的内容**(只看 path,不打开 file) |
+
+全程本地运行,数据不出本机。
+
+_本文档里 "headline" 指 scan 报告顶部默认汇总数字。_
+
+## Readiness checklist(`readiness` 命令)
+
+类比 PC 时代:单台 PC 的 ROI 不明显,LAN / 共享文件系统 / 邮件铺开后,组织效率才显现。Agent 是同一个故事——单个工程师用 Cursor / Claude 提速,不等于公司产出提升,真正的"AI LAN"是 repo 里**有足够共享上下文让 agent 可靠工作**:
+
+- CI / tests 能兜住 AI 生成的代码
+- review 流程 + CODEOWNERS 能拦住坏改动
+- README / CONTRIBUTING / docs 能让 agent 复用上下文
+- 配置 / secrets 隔离清楚
+
+`readiness` 命令把这些做成一个 **presence checklist**。每项判定基于**已知路径下的文件是否存在**,不读 file content。
+
+当前 v1.1 检查项,按四类分组:
+
+| 类 | 检查项 | 检测路径 |
+|---|---|---|
+| CI / 测试 | CI workflow | `.github/workflows/*.{yml,yaml}` / `.gitlab-ci.yml` / `.circleci/config.yml` / `Jenkinsfile` / `azure-pipelines.yml` / `.buildkite/pipeline.yml` / `.drone.yml` |
+| CI / 测试 | tests 目录 | `tests/` / `test/` / `spec/` / `__tests__/`(目录非空) |
+| CI / 测试 | lint / formatter 配置 | `.ruff.toml` / `.eslintrc*` / `.flake8` / `.prettierrc*` / `biome.json` / `.rubocop.yml` / `.golangci.yml` / `clippy.toml` 等专用 config 文件 |
+| 文档 | README | `README.md` / `README.rst` / `README.txt` / `README` |
+| 文档 | CONTRIBUTING 指南 | `CONTRIBUTING.md` / 等同变体 / `docs/CONTRIBUTING.md` / `.github/CONTRIBUTING.md` |
+| 文档 | LICENSE | `LICENSE` / `LICENSE.md` / `LICENSE.txt` / `LICENSE-MIT` / `COPYING` 等 |
+| 协作 | CODEOWNERS | `.github/CODEOWNERS` / `CODEOWNERS` / `docs/CODEOWNERS` |
+| 协作 | PR template | `.github/pull_request_template.md` / 等同变体 |
+| 配置 / 安全 | .gitignore | `.gitignore` |
+| 配置 / 安全 | .env example | `.env.example` / `.env.template` / `.env.sample` / `env.example` |
+
+**故意不做的事**:
+
+- **不出"X/10"分数**——任何聚合分数都暗含"我们说什么算好"的判断,工具拒绝持有这种立场
+- **不读 file content**——这是 `readiness` 命令的隐私承诺;只看 path 存在
+- **不检测嵌入在 `pyproject.toml` 或 `package.json` 里的 lint config**——需要 file content read,推到后续版本(若加,会用 opt-in flag)
+- **不告诉你这是 ready / not ready**——读者拿到 checklist,自己判断
 
 ## "Shipped"
 

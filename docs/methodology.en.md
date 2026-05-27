@@ -1,15 +1,55 @@
 # Methodology
 
-Two things that companies usually measure separately, put on one chart:
+The tool answers two separate questions through two commands:
 
-1. AI tool spend
-2. Engineering throughput — the rate at which code reaches a "shipped" state
+- **`scan`** — is AI spend translating into shipped code? Reads git history, PR API metadata, and AI billing CSVs. Emits a spend × throughput × friction report.
+- **`readiness`** — does your repo have the shared context an agent needs to work safely? Checks **file presence** at known paths (does not read file content). Emits a checklist.
 
-The tool does not compute ROI. It puts the two curves side by side. The rest of this document defines each v1.0 metric and its known limits.
+No ROI computed, no scores, no code-quality verdicts. Just facts on a page; the reader does the judging.
 
-The tool runs locally and reads git history, PR API metadata, and a vendor billing CSV you provide. It does not read code content, PR / issue bodies, comment bodies, or prompts; it does read changed file paths, diff stats, and review / comment event metadata (timestamp, author handle, bot flag).
+### Privacy boundary
 
-_"headline" in this document means the default summary numbers at the top of a report._
+| Command | Reads | Does not read |
+|---|---|---|
+| `scan` | git commit metadata, PR API metadata, billing CSV totals you provide, changed file paths, diff stats, review/comment event metadata (timestamp, author handle, bot flag) | code content, PR / issue bodies, comment bodies, prompts, model responses |
+| `readiness` | **file presence** at known paths (`.github/workflows/`, `CODEOWNERS`, `README.md`, etc.) | **any file's content** (the path is checked, the file is not opened) |
+
+All processing is local. No data leaves your machine.
+
+_"headline" in this document means the default summary numbers at the top of a scan report._
+
+## Readiness checklist (`readiness` command)
+
+PC analogy: a single PC's ROI was hard to see; once LANs / shared file systems / email rolled out, organizational productivity emerged. Agents are the same story — one engineer using Cursor / Claude getting faster does not equal a company getting more done. The real "AI LAN" is a repo with **enough shared context for an agent to work reliably**:
+
+- CI / tests catch AI-generated breakage
+- Review + CODEOWNERS gate bad changes
+- README / CONTRIBUTING / docs let agents reuse context
+- Config / secrets are isolated cleanly
+
+The `readiness` command turns these into a **presence checklist**. Every item is decided by whether a known path exists on disk — no file content is read.
+
+v1.1 checks, grouped into four categories:
+
+| Category | Check | Paths searched |
+|---|---|---|
+| CI / testing | CI workflow | `.github/workflows/*.{yml,yaml}` / `.gitlab-ci.yml` / `.circleci/config.yml` / `Jenkinsfile` / `azure-pipelines.yml` / `.buildkite/pipeline.yml` / `.drone.yml` |
+| CI / testing | tests directory | `tests/` / `test/` / `spec/` / `__tests__/` (non-empty) |
+| CI / testing | lint / formatter config | `.ruff.toml` / `.eslintrc*` / `.flake8` / `.prettierrc*` / `biome.json` / `.rubocop.yml` / `.golangci.yml` / `clippy.toml` and similar dedicated config files |
+| documentation | README | `README.md` / `README.rst` / `README.txt` / `README` |
+| documentation | CONTRIBUTING guide | `CONTRIBUTING.md` and variants / `docs/CONTRIBUTING.md` / `.github/CONTRIBUTING.md` |
+| documentation | LICENSE | `LICENSE` / `LICENSE.md` / `LICENSE.txt` / `LICENSE-MIT` / `COPYING` and similar |
+| collaboration | CODEOWNERS | `.github/CODEOWNERS` / `CODEOWNERS` / `docs/CODEOWNERS` |
+| collaboration | PR template | `.github/pull_request_template.md` and variants |
+| config / security | .gitignore | `.gitignore` |
+| config / security | .env example | `.env.example` / `.env.template` / `.env.sample` / `env.example` |
+
+**Deliberately not done**:
+
+- **No "X / 10" score** — any aggregate score implies "we decide what's good", a stance the tool refuses to take
+- **No file content reads** — the privacy contract for `readiness`; only paths are inspected
+- **Doesn't detect lint config embedded in `pyproject.toml` / `package.json`** — that requires reading file content, deferred (would need an opt-in flag)
+- **Doesn't emit ready / not-ready verdict** — readers get the checklist and judge for themselves
 
 ## "Shipped"
 
